@@ -1,12 +1,51 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const crypto = require('crypto');
-const { GoogleSpreadsheet } = require('google-spreadsheet');
+const {google} = require('googleapis');
+const sheets = google.sheets('v4');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const SECRET_KEY = '7ed7bef3e0bf5f5fb95c7fb269015c6d48eb1c41108af4c9d66d0a67a7a4f8f0'; 
 const SPREADSHEET_ID = '1oDvNiULkM1W0qFx25OqZgW-1H7nKyX8_oJIxO8dtej4'; 
+
+/*fs.readFile('integracion-mp-1bf8d9edb5a4.json', (err, content) => {
+  if (err) return console.log('Error loading client secret file:', err);
+  authorize(JSON.parse(content), addColumn);
+});
+
+
+
+fs.readFile(path.join(__dirname, 'token.json'), (err, token) => {
+  if (err) return getNewToken(oAuth2Client, callback); // getNewToken is a function you need to define to handle the auth flow
+  oAuth2Client.setCredentials(JSON.parse(token));
+  callback(oAuth2Client);
+});
+*/
+function authorize(credentials, callback) {
+  const {client_secret, client_id, redirect_uris} = credentials.installed;
+  const oAuth2Client = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
+
+  // Set token for auth (assuming you already have one, see Google's OAuth2 documentation on how to get it)
+  // This is usually obtained through a previous authorization process
+  // Here you would load your token from a file or environment variable
+  getNewToken(oAuth2Client);
+
+  callback(oAuth2Client);
+}
+
+
+function getNewToken(oAuth2Client, callback) {
+// Generate the auth URL and prompt the user to visit it and get the authorization code
+const authUrl = oAuth2Client.generateAuthUrl({
+  access_type: 'offline',
+  scope: ['https://www.googleapis.com/auth/spreadsheets'],
+});
+
+console.log('Authorize this app by visiting this url:', authUrl);
+// Further steps would involve capturing the code from the URL, exchanging it for a token, and then storing the token.
+}
 
 app.use(bodyParser.json());
 
@@ -48,24 +87,3 @@ app.post('/webhook-receiver', async (req, res) => {
   }
 });
 
-async function addToGoogleSheet(data) {
-  try {
-    const doc = new GoogleSpreadsheet(SPREADSHEET_ID);
-    await doc.useServiceAccountAuth({
-      client_email: process.env.GOOGLE_CLIENT_EMAIL,
-      private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-    });
-    await doc.loadInfo(); 
-
-    const sheet = doc.sheetsByIndex[0]; 
-    await sheet.addRow(data); 
-
-    console.log('Datos agregados a la hoja de cálculo.');
-  } catch (error) {
-    console.error('Error al agregar datos a la hoja de cálculo:', error);
-  }
-}
-
-app.listen(PORT, () => {
-  console.log(`Servidor escuchando en el puerto ${PORT}`);
-});
